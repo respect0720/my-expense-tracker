@@ -110,6 +110,7 @@ Base.metadata.create_all(bind=engine)
 def create_transaction(
     amount: float,
     category: str,
+    transaction_type: str = "expense",
     subcategory: str = None,
     merchant: str = None,
     payment_method: str = None,
@@ -121,7 +122,7 @@ def create_transaction(
 
     transaction = Transaction(
         amount=amount,
-        transaction_type="expense",
+        transaction_type=transaction_type,
         category=category,
         subcategory=subcategory,
         merchant=merchant,
@@ -140,6 +141,7 @@ def create_transaction(
         "transaction": {
             "id": transaction.id,
             "amount": transaction.amount,
+            "type": transaction.transaction_type,
             "category": transaction.category,
             "subcategory": transaction.subcategory,
             "merchant": transaction.merchant,
@@ -207,23 +209,26 @@ def home():
 def get_statistics():
     db = SessionLocal()
     today = date.today()
-    # 取得本月第一天 (例如 2026-08-01)
     first_day_of_month = today.replace(day=1)
     
-    # 計算今日總花費
-    today_total = db.query(func.sum(Transaction.amount)).filter(
-        Transaction.transaction_date == today
+    # 計算本月總收入
+    month_income = db.query(func.sum(Transaction.amount)).filter(
+        Transaction.transaction_date >= first_day_of_month,
+        Transaction.transaction_type == "income"
     ).scalar() or 0
     
-    # 計算本月總花費
-    month_total = db.query(func.sum(Transaction.amount)).filter(
-        Transaction.transaction_date >= first_day_of_month
+    # 計算本月總支出
+    month_expense = db.query(func.sum(Transaction.amount)).filter(
+        Transaction.transaction_date >= first_day_of_month,
+        Transaction.transaction_type == "expense"
     ).scalar() or 0
     
     db.close()
+    
     return {
-        "today_total": today_total,
-        "month_total": month_total
+        "month_income": month_income,
+        "month_expense": month_expense,
+        "balance": month_income - month_expense  # 本月結餘
     }
 
 # 9. 匯出 Excel
