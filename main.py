@@ -1,12 +1,6 @@
-import pandas as pd
-from fastapi.responses import FileResponse
-from fastapi import FastAPI
-from sqlalchemy import create_engine, Column, Integer, Float, String, Date
-from sqlalchemy.orm import declarative_base, sessionmaker
-from sqlalchemy import create_engine, Column, Integer, Float, String, Date
-from sqlalchemy.orm import declarative_base, sessionmaker
-from sqlalchemy import func  # <-- 新增這行，用來做加總計算
-from datetime import date
+import os
+from sqlalchemy import create_engine
+DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./expenses.db")
 
 
 # ==========================================
@@ -23,8 +17,6 @@ app = FastAPI(
 # ==========================================
 # 2. SQLite Database
 # ==========================================
-
-DATABASE_URL = "sqlite:///./expenses.db"
 
 engine = create_engine(
     DATABASE_URL,
