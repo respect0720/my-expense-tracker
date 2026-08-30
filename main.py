@@ -1,8 +1,8 @@
 import os
 from fastapi import FastAPI
-from pydantic import BaseModel # 以及其他你原本有的 import
+from pydantic import BaseModel
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
 
 app = FastAPI()
 
