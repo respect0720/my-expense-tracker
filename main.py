@@ -271,6 +271,35 @@ def get_monthly_statistics():
         
     db.close()
     return monthly_data
+# 11. 取得當月各分類的支出統計 (給圓餅圖用)
+@app.get("/statistics/category")
+def get_category_statistics():
+    db = SessionLocal()
+    today = date.today()
+    first_day_of_month = today.replace(day=1)
+    
+    # 查詢本月各分類的總金額加總 (僅計算支出)
+    results = db.query(
+        Transaction.category,
+        func.sum(Transaction.amount)
+    ).filter(
+        Transaction.transaction_date >= first_day_of_month,
+        Transaction.transaction_type == "expense"
+    ).group_by(Transaction.category).all()
+    
+    db.close()
+    
+    categories = []
+    amounts = []
+    
+    for cat, total in results:
+        categories.append(cat)
+        amounts.append(total)
+        
+    return {
+        "categories": categories,
+        "amounts": amounts
+    }
 
 # 9. 匯出 Excel
 @app.get("/export/excel")

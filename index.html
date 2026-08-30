@@ -3,6 +3,8 @@
 <head>
     <title>我的記帳系統</title>
     <meta charset="utf-8">
+    <!-- 引入 Chart.js 圖表套件 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: sans-serif; background-color: #f4f4f9; padding: 20px; max-width: 900px; margin: auto; }
         .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
@@ -32,7 +34,7 @@
             </div>
         </div>
 
-        <!-- 右側：當月大面板與明細 -->
+        <!-- 右側：當月大面板、圓餅圖與明細 -->
         <div class="main-content">
             <!-- Dashboard 統計面板 -->
             <div class="card" style="text-align: center;">
@@ -47,6 +49,14 @@
                         <span style="color: #666;">本月支出：</span>
                         <span id="monthExpense" style="color: #dc3545; font-weight: bold;">$0</span>
                     </div>
+                </div>
+            </div>
+
+            <!-- 圓餅圖卡片 -->
+            <div class="card">
+                <h3 style="text-align: center; color: #444; margin-bottom: 15px;">📊 本月分類支出佔比</h3>
+                <div style="width: 100%; max-width: 300px; margin: auto;">
+                    <canvas id="categoryChart"></canvas>
                 </div>
             </div>
 
@@ -65,6 +75,8 @@
     </div>
 
     <script>
+        let myChart = null;
+
         // 1. 讀取當月統計數據
         async function loadStatistics() {
             const response = await fetch('/statistics');
@@ -74,7 +86,7 @@
             document.getElementById('monthExpense').innerText = `$${data.month_expense}`;
         }
 
-        // 2. 讀取今年各月統計數據並顯示在左側
+        // 2. 讀取今年各月統計數據
         async function loadMonthlyStatistics() {
             const response = await fetch('/statistics/monthly');
             const data = await response.json();
@@ -82,7 +94,6 @@
             monthlyList.innerHTML = '';
 
             data.forEach(m => {
-                // 如果該月份完全沒有收支，可以選擇跳過或顯示 0，這裡全部顯示
                 monthlyList.innerHTML += `
                     <div class="month-row">
                         <span style="font-weight: bold; color: #444;">${m.month}</span>
@@ -93,7 +104,42 @@
             });
         }
 
-        // 3. 取得所有交易紀錄
+        // 3. 讀取分類統計並繪製圓餅圖
+        async function loadCategoryChart() {
+            const response = await fetch('/statistics/category');
+            const data = await response.json();
+            
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+            
+            // 如果圖表已經存在，先銷毀舊的再重新畫，避免重疊報錯
+            if (myChart) {
+                myChart.destroy();
+            }
+
+            myChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: data.categories,
+                    datasets: [{
+                        data: data.amounts,
+                        backgroundColor: [
+                            '#ff6384', '#36a2eb', '#cc65fe', '#ffce56', 
+                            '#4bc0c0', '#9966ff', '#ff9f40', '#c9cbcf'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        }
+                    }
+                }
+            });
+        }
+
+        // 4. 取得所有交易紀錄
         async function loadTransactions() {
             const response = await fetch('/transactions');
             const data = await response.json();
@@ -122,13 +168,14 @@
             });
         }
 
-        // 4. 刪除交易
+        // 5. 刪除交易
         async function deleteTransaction(id) {
             if(confirm("確定要刪除這筆紀錄嗎？")) {
                 await fetch(`/transactions/${id}`, { method: 'DELETE' });
                 loadTransactions(); 
                 loadStatistics();
                 loadMonthlyStatistics();
+                loadCategoryChart(); // 刪除後同步更新圓餅圖
             }
         }
 
@@ -136,6 +183,7 @@
         loadTransactions(); 
         loadStatistics();
         loadMonthlyStatistics();
+        loadCategoryChart();
     </script>
 </body>
 </html>
