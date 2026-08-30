@@ -34,39 +34,31 @@
         📊 下載 Excel 報表
     </button>   
 
+    <!-- 新增記帳表單 -->
     <div class="card">
         <h2>新增記帳</h2>
         <form id="expenseForm">
-            <!-- 收支類型選單 -->
             <select id="transaction_type">
                 <option value="expense">支出</option>
                 <option value="income">收入</option>
             </select>
             <input type="number" id="amount" placeholder="金額 (例如: 150)" required>
-            <select id="category">
-                <option value="飲食">飲食</option>
-                <option value="交通">交通</option>
-                <option value="生活">生活</option>
-            </select>
-            <input type="text" id="subcategory" placeholder="子分類 (例如: 午餐、飲料)">
-            <input type="text" id="merchant" placeholder="商家 (例如: 麥當勞、全聯)">
-            <select id="payment_method">
-                <option value="現金">現金</option>
-                <option value="信用卡">信用卡</option>
-                <option value="LINE Pay">LINE Pay</option>
-            </select>
-            <input type="text" id="note" placeholder="備註 (例如: 麻辣鍋、買牛奶)">
+            <input type="text" id="category" placeholder="分類 (例如: 飲食、薪水)" required>
+            <input type="text" id="subcategory" placeholder="子分類 (例如: 午餐、獎金)">
+            <input type="text" id="merchant" placeholder="商家 / 來源 (例如: 7-11、公司)">
+            <input type="text" id="payment_method" placeholder="付款方式 (例如: 現金、LINE Pay)">
+            <input type="text" id="note" placeholder="備註 (例如: 買便當)">
             <button type="submit">新增記帳！</button>
         </form>
     </div>
 
+    <!-- 最近交易紀錄 -->
     <div class="card">
         <h2>最近交易</h2>
         <div id="transactionList"></div>
     </div>
 
     <script>
-        // 1. 讀取統計數據並更新畫面
         async function loadStatistics() {
             const response = await fetch('/statistics');
             const data = await response.json();
@@ -75,7 +67,6 @@
             document.getElementById('monthExpense').innerText = `$${data.month_expense}`;
         }
 
-        // 2. 取得所有交易紀錄並顯示在畫面上
         async function loadTransactions() {
             const response = await fetch('/transactions');
             const data = await response.json();
@@ -83,21 +74,28 @@
             list.innerHTML = '';
             
             data.forEach(t => {
-                // 根據收入或支出改變金額顏色 (收入綠色、支出紅色)
                 const amountColor = t.type === 'income' ? '#28a745' : '#dc3545';
                 const sign = t.type === 'income' ? '+' : '-';
                 
+                // 組合詳細資訊：排除商家，保留分類、子分類、付款方式與備註
+                let details = `[${t.category}]`;
+                if (t.subcategory) details += ` / ${t.subcategory}`;
+                if (t.payment_method) details += ` 💳 ${t.payment_method}`;
+                if (t.note) details += ` 📝 ${t.note}`;
+
                 list.innerHTML += `
-                    <div class="expense-item" style="align-items: center;">
-                        <span style="flex-grow: 1;">${t.date} | [${t.category}] ${t.merchant || '無商家'} - ${t.note || '無備註'}</span>
-                        <span style="color: ${amountColor}; font-weight: bold; margin-right: 15px;">${sign}$${t.amount}</span>
+                    <div class="expense-item" style="align-items: center; padding: 12px 0;">
+                        <div style="flex-grow: 1; padding-right: 10px;">
+                            <div style="font-size: 12px; color: #888; margin-bottom: 3px;">${t.date}</div>
+                            <div style="font-size: 14px; color: #333; font-weight: 500;">${details}</div>
+                        </div>
+                        <span style="color: ${amountColor}; font-weight: bold; font-size: 16px; margin-right: 15px; white-space: nowrap;">${sign}$${t.amount}</span>
                         <button onclick="deleteTransaction(${t.id})" style="width: auto; background-color: #dc3545; padding: 5px 10px; margin: 0;">刪除</button>
                     </div>
                 `;
             });
         }
 
-        // 3. 呼叫刪除 API
         async function deleteTransaction(id) {
             if(confirm("確定要刪除這筆紀錄嗎？")) {
                 await fetch(`/transactions/${id}`, { method: 'DELETE' });
@@ -106,19 +104,17 @@
             }
         }
 
-        // 4. 送出表單新增記帳
         document.getElementById('expenseForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            const transaction_type = document.getElementById('transaction_type').value;
             const amount = document.getElementById('amount').value;
             const category = document.getElementById('category').value;
             const subcategory = document.getElementById('subcategory').value;
-            const transaction_type = document.getElementById('transaction_type').value; // 抓取收支類型
             const merchant = document.getElementById('merchant').value;
             const payment_method = document.getElementById('payment_method').value;
             const note = document.getElementById('note').value;
 
-            // 將 transaction_type 透過網址參數傳遞給後端
             await fetch(`/transactions?amount=${amount}&category=${category}&transaction_type=${transaction_type}&subcategory=${subcategory}&merchant=${merchant}&payment_method=${payment_method}&note=${note}`, {
                 method: 'POST'
             });
@@ -128,7 +124,6 @@
             loadStatistics();   
         });
 
-        // 5. 網頁剛開啟時載入資料
         loadTransactions(); 
         loadStatistics();   
     </script>
