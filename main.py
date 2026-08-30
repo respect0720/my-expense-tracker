@@ -230,6 +230,47 @@ def get_statistics():
         "month_expense": month_expense,
         "balance": month_income - month_expense  # 本月結餘
     }
+# 10. 取得今年 1 到 12 月的各月收支統計
+@app.get("/statistics/monthly")
+def get_monthly_statistics():
+    db = SessionLocal()
+    current_year = date.today().year
+    
+    monthly_data = []
+    
+    # 用迴圈跑 1 到 12 月
+    for month in range(1, 13):
+        # 找出該月第一天與最後一天
+        if month == 12:
+            start_date = date(current_year, 12, 1)
+            end_date = date(current_year + 1, 1, 1)
+        else:
+            start_date = date(current_year, month, 1)
+            end_date = date(current_year, month + 1, 1)
+            
+        # 計算該月總收入
+        income = db.query(func.sum(Transaction.amount)).filter(
+            Transaction.transaction_date >= start_date,
+            Transaction.transaction_date < end_date,
+            Transaction.transaction_type == "income"
+        ).scalar() or 0
+        
+        # 計算該月總支出
+        expense = db.query(func.sum(Transaction.amount)).filter(
+            Transaction.transaction_date >= start_date,
+            Transaction.transaction_date < end_date,
+            Transaction.transaction_type == "expense"
+        ).scalar() or 0
+        
+        monthly_data.append({
+            "month": f"{month}月",
+            "income": income,
+            "expense": expense,
+            "balance": income - expense
+        })
+        
+    db.close()
+    return monthly_data
 
 # 9. 匯出 Excel
 @app.get("/export/excel")

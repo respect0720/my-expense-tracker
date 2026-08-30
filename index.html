@@ -4,41 +4,68 @@
     <title>我的記帳系統</title>
     <meta charset="utf-8">
     <style>
-        body { font-family: sans-serif; background-color: #f4f4f9; padding: 20px; max-width: 600px; margin: auto; }
+        body { font-family: sans-serif; background-color: #f4f4f9; padding: 20px; max-width: 900px; margin: auto; }
         .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
         button { width: 100%; padding: 10px; margin: 8px 0; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
         .expense-item { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 10px 0; }
+        
+        /* 左右排版容器 */
+        .container { display: flex; gap: 20px; }
+        .sidebar { flex: 1; }
+        .main-content { flex: 2; }
+        @media (max-width: 768px) {
+            .container { flex-direction: column; }
+        }
+        .month-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
     </style>
 </head>
 <body>
-    <!-- Dashboard 統計面板 -->
-    <div class="card" style="text-align: center;">
-        <h3 style="color: #666; margin-bottom: 5px;">本月結餘</h3>
-        <h1 id="balance" style="color: #007bff; margin-top: 0; margin-bottom: 15px;">$0</h1>
-        <div style="display: flex; justify-content: space-around;">
-            <div>
-                <span style="color: #666;">本月收入：</span>
-                <span id="monthIncome" style="color: #28a745; font-weight: bold;">$0</span>
-            </div>
-            <div>
-                <span style="color: #666;">本月支出：</span>
-                <span id="monthExpense" style="color: #dc3545; font-weight: bold;">$0</span>
+
+    <!-- 主頁面左右排版 -->
+    <div class="container">
+        
+        <!-- 左側：年度每月統計 -->
+        <div class="sidebar">
+            <div class="card">
+                <h3>📅 今年各月收支</h3>
+                <div id="monthlyList">載入中...</div>
             </div>
         </div>
-    </div>
 
-    <!-- 匯出按鈕 -->
-    <button onclick="window.location.href='/export/excel'" style="background-color: #28a745; margin-bottom: 20px; font-size: 16px; color: white;">
-        📊 下載 Excel 報表
-    </button>   
+        <!-- 右側：當月大面板與明細 -->
+        <div class="main-content">
+            <!-- Dashboard 統計面板 -->
+            <div class="card" style="text-align: center;">
+                <h3 style="color: #666; margin-bottom: 5px;">本月結餘</h3>
+                <h1 id="balance" style="color: #007bff; margin-top: 0; margin-bottom: 15px;">$0</h1>
+                <div style="display: flex; justify-content: space-around;">
+                    <div>
+                        <span style="color: #666;">本月收入：</span>
+                        <span id="monthIncome" style="color: #28a745; font-weight: bold;">$0</span>
+                    </div>
+                    <div>
+                        <span style="color: #666;">本月支出：</span>
+                        <span id="monthExpense" style="color: #dc3545; font-weight: bold;">$0</span>
+                    </div>
+                </div>
+            </div>
 
-    <!-- 最近交易紀錄 -->
-    <div class="card">
-        <h2>最近交易</h2>
-        <div id="transactionList"></div>
+            <!-- 匯出按鈕 -->
+            <button onclick="window.location.href='/export/excel'" style="background-color: #28a745; margin-bottom: 20px; font-size: 16px; color: white;">
+                📊 下載 Excel 報表
+            </button>   
+
+            <!-- 最近交易紀錄 -->
+            <div class="card">
+                <h2>最近交易</h2>
+                <div id="transactionList"></div>
+            </div>
+        </div>
+
     </div>
 
     <script>
+        // 1. 讀取當月統計數據
         async function loadStatistics() {
             const response = await fetch('/statistics');
             const data = await response.json();
@@ -47,6 +74,26 @@
             document.getElementById('monthExpense').innerText = `$${data.month_expense}`;
         }
 
+        // 2. 讀取今年各月統計數據並顯示在左側
+        async function loadMonthlyStatistics() {
+            const response = await fetch('/statistics/monthly');
+            const data = await response.json();
+            const monthlyList = document.getElementById('monthlyList');
+            monthlyList.innerHTML = '';
+
+            data.forEach(m => {
+                // 如果該月份完全沒有收支，可以選擇跳過或顯示 0，這裡全部顯示
+                monthlyList.innerHTML += `
+                    <div class="month-row">
+                        <span style="font-weight: bold; color: #444;">${m.month}</span>
+                        <span>收: <span style="color: #28a745;">$${m.income}</span></span>
+                        <span>支: <span style="color: #dc3545;">$${m.expense}</span></span>
+                    </div>
+                `;
+            });
+        }
+
+        // 3. 取得所有交易紀錄
         async function loadTransactions() {
             const response = await fetch('/transactions');
             const data = await response.json();
@@ -57,7 +104,6 @@
                 const amountColor = t.type === 'income' ? '#28a745' : '#dc3545';
                 const sign = t.type === 'income' ? '+' : '-';
                 
-                // 組合詳細資訊：排除商家，保留分類、子分類、付款方式與備註
                 let details = `[${t.category}]`;
                 if (t.subcategory) details += ` / ${t.subcategory}`;
                 if (t.payment_method) details += ` 💳 ${t.payment_method}`;
@@ -76,17 +122,20 @@
             });
         }
 
+        // 4. 刪除交易
         async function deleteTransaction(id) {
             if(confirm("確定要刪除這筆紀錄嗎？")) {
                 await fetch(`/transactions/${id}`, { method: 'DELETE' });
                 loadTransactions(); 
-                loadStatistics();   
+                loadStatistics();
+                loadMonthlyStatistics();
             }
         }
 
-        // 網頁剛開啟時載入資料與統計
+        // 初始化載入
         loadTransactions(); 
-        loadStatistics();   
+        loadStatistics();
+        loadMonthlyStatistics();
     </script>
 </body>
 </html>
