@@ -6,9 +6,7 @@
     <style>
         body { font-family: sans-serif; background-color: #f4f4f9; padding: 20px; max-width: 600px; margin: auto; }
         .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        input, select, button { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-        button { background-color: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; }
-        button:hover { background-color: #0056b3; }
+        button { width: 100%; padding: 10px; margin: 8px 0; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
         .expense-item { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 10px 0; }
     </style>
 </head>
@@ -30,27 +28,9 @@
     </div>
 
     <!-- 匯出按鈕 -->
-    <button onclick="window.location.href='/export/excel'" style="background-color: #28a745; margin-bottom: 20px; font-size: 16px;">
+    <button onclick="window.location.href='/export/excel'" style="background-color: #28a745; margin-bottom: 20px; font-size: 16px; color: white;">
         📊 下載 Excel 報表
     </button>   
-
-    <!-- 新增記帳表單 -->
-    <div class="card">
-        <h2>新增記帳</h2>
-        <form id="expenseForm">
-            <select id="transaction_type">
-                <option value="expense">支出</option>
-                <option value="income">收入</option>
-            </select>
-            <input type="number" id="amount" placeholder="金額 (例如: 150)" required>
-            <input type="text" id="category" placeholder="分類 (例如: 飲食、薪水)" required>
-            <input type="text" id="subcategory" placeholder="子分類 (例如: 午餐、獎金)">
-            <input type="text" id="merchant" placeholder="商家 / 來源 (例如: 7-11、公司)">
-            <input type="text" id="payment_method" placeholder="付款方式 (例如: 現金、LINE Pay)">
-            <input type="text" id="note" placeholder="備註 (例如: 買便當)">
-            <button type="submit">新增記帳！</button>
-        </form>
-    </div>
 
     <!-- 最近交易紀錄 -->
     <div class="card">
@@ -90,7 +70,7 @@
                             <div style="font-size: 14px; color: #333; font-weight: 500;">${details}</div>
                         </div>
                         <span style="color: ${amountColor}; font-weight: bold; font-size: 16px; margin-right: 15px; white-space: nowrap;">${sign}$${t.amount}</span>
-                        <button onclick="deleteTransaction(${t.id})" style="width: auto; background-color: #dc3545; padding: 5px 10px; margin: 0;">刪除</button>
+                        <button onclick="deleteTransaction(${t.id})" style="width: auto; background-color: #dc3545; color: white; padding: 5px 10px; margin: 0;">刪除</button>
                     </div>
                 `;
             });
@@ -104,26 +84,7 @@
             }
         }
 
-        document.getElementById('expenseForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const transaction_type = document.getElementById('transaction_type').value;
-            const amount = document.getElementById('amount').value;
-            const category = document.getElementById('category').value;
-            const subcategory = document.getElementById('subcategory').value;
-            const merchant = document.getElementById('merchant').value;
-            const payment_method = document.getElementById('payment_method').value;
-            const note = document.getElementById('note').value;
-
-            await fetch(`/transactions?amount=${amount}&category=${category}&transaction_type=${transaction_type}&subcategory=${subcategory}&merchant=${merchant}&payment_method=${payment_method}&note=${note}`, {
-                method: 'POST'
-            });
-
-            document.getElementById('expenseForm').reset();
-            loadTransactions(); 
-            loadStatistics();   
-        });
-
+        // 網頁剛開啟時載入資料與統計
         loadTransactions(); 
         loadStatistics();   
     </script>
