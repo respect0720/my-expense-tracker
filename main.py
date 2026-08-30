@@ -28,10 +28,12 @@ app = FastAPI(
 # 2. SQLite Database
 # ==========================================
 
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False}
-)
+if DATABASE_URL.startswith("sqlite"):
+    # 如果是本地端開發，保留 SQLite 的專屬設定
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    # 如果是雲端 PostgreSQL，自動拿掉會報錯的設定
+    engine = create_engine(DATABASE_URL)
 
 SessionLocal = sessionmaker(
     autocommit=False,
