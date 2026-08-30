@@ -5,20 +5,33 @@
     <meta charset="utf-8">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: sans-serif; background-color: #f4f4f9; padding: 20px; max-width: 900px; margin: auto; }
+        body { font-family: sans-serif; background-color: #f4f4f9; padding: 20px; max-width: 1050px; margin: auto; }
         .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
         button, select { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; cursor: pointer; font-weight: bold; }
         button { background-color: #007bff; color: white; border: none; }
         button:hover { background-color: #0056b3; }
         .expense-item { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 10px 0; }
         
+        /* 左右排版 (左側加寬讓六位數金額完美對齊) */
         .container { display: flex; gap: 20px; }
-        .sidebar { flex: 1; }
+        .sidebar { flex: 1.2; min-width: 310px; }
         .main-content { flex: 2; }
         @media (max-width: 768px) {
             .container { flex-direction: column; }
         }
-        .month-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+
+        /* 網格對齊排版：月份、收入、支出固定欄位並靠右對齊 */
+        .month-row { 
+            display: grid; 
+            grid-template-columns: 50px 1fr 1fr; 
+            align-items: center; 
+            padding: 9px 0; 
+            border-bottom: 1px solid #f0f0f0; 
+            font-size: 14px; 
+        }
+        .month-name { font-weight: bold; color: #444; }
+        .month-val-income { text-align: right; color: #28a745; font-variant-numeric: tabular-nums; }
+        .month-val-expense { text-align: right; color: #dc3545; font-variant-numeric: tabular-nums; }
     </style>
 </head>
 <body>
@@ -29,6 +42,11 @@
         <div class="sidebar">
             <div class="card">
                 <h3>📅 今年各月收支</h3>
+                <div style="font-size: 12px; color: #888; display: grid; grid-template-columns: 50px 1fr 1fr; border-bottom: 2px solid #ddd; padding-bottom: 5px; margin-bottom: 5px;">
+                    <span>月份</span>
+                    <span style="text-align: right;">收入</span>
+                    <span style="text-align: right;">支出</span>
+                </div>
                 <div id="monthlyList">載入中...</div>
             </div>
         </div>
@@ -63,11 +81,7 @@
             <div class="card">
                 <h3>🔍 歷史紀錄查詢</h3>
                 <div style="display: flex; gap: 10px;">
-                    <select id="selectYear">
-                        <option value="2026">2026年</option>
-                        <option value="2025">2025年</option>
-                        <option value="2024">2024年</option>
-                    </select>
+                    <select id="selectYear"></select>
                     <select id="selectMonth">
                         <option value="1">1月</option><option value="2">2月</option><option value="3">3月</option>
                         <option value="4">4月</option><option value="5">5月</option><option value="6">6月</option>
@@ -104,9 +118,17 @@
     <script>
         let myChart = null;
 
-        // 自動將下拉選單預設為「當前年份與月份」
+        // 自動動態產生年份選項 (從今年開始往回推 5 年)
         const now = new Date();
-        document.getElementById('selectYear').value = now.getFullYear();
+        const currentYear = now.getFullYear();
+        const yearSelect = document.getElementById('selectYear');
+        for (let y = currentYear; y >= currentYear - 5; y--) {
+            let opt = document.createElement('option');
+            opt.value = y;
+            opt.innerText = y + "年";
+            yearSelect.appendChild(opt);
+        }
+        yearSelect.value = currentYear;
         document.getElementById('selectMonth').value = now.getMonth() + 1;
 
         async function loadStatistics() {
@@ -126,9 +148,9 @@
             data.forEach(m => {
                 monthlyList.innerHTML += `
                     <div class="month-row">
-                        <span style="font-weight: bold; color: #444;">${m.month}</span>
-                        <span>收: <span style="color: #28a745;">$${m.income}</span></span>
-                        <span>支: <span style="color: #dc3545;">$${m.expense}</span></span>
+                        <span class="month-name">${m.month}</span>
+                        <span class="month-val-income">+$${m.income.toLocaleString()}</span>
+                        <span class="month-val-expense">-$${m.expense.toLocaleString()}</span>
                     </div>
                 `;
             });
@@ -175,14 +197,13 @@
                             <div style="font-size: 12px; color: #888; margin-bottom: 3px;">${t.date}</div>
                             <div style="font-size: 14px; color: #333; font-weight: 500;">${details}</div>
                         </div>
-                        <span style="color: ${amountColor}; font-weight: bold; font-size: 16px; margin-right: 15px; white-space: nowrap;">${sign}$${t.amount}</span>
+                        <span style="color: ${amountColor}; font-weight: bold; font-size: 16px; margin-right: 15px; white-space: nowrap;">${sign}$${t.amount.toLocaleString()}</span>
                         <button onclick="deleteTransaction(${t.id})" style="width: auto; background-color: #dc3545; color: white; padding: 5px 10px; margin: 0;">刪除</button>
                     </div>
                 `;
             });
         }
 
-        // 查詢歷史紀錄
         async function loadHistory() {
             const year = document.getElementById('selectYear').value;
             const month = document.getElementById('selectMonth').value;
@@ -190,9 +211,9 @@
             const response = await fetch(`/statistics/history?year=${year}&month=${month}`);
             const data = await response.json();
             
-            document.getElementById('histBalance').innerText = `$${data.balance}`;
-            document.getElementById('histIncome').innerText = data.income;
-            document.getElementById('histExpense').innerText = data.expense;
+            document.getElementById('histBalance').innerText = `$${data.balance.toLocaleString()}`;
+            document.getElementById('histIncome').innerText = data.income.toLocaleString();
+            document.getElementById('histExpense').innerText = data.expense.toLocaleString();
             
             const historyList = document.getElementById('historyList');
             historyList.innerHTML = '';
@@ -215,7 +236,7 @@
                                 <div style="font-size: 11px; color: #888;">${t.date}</div>
                                 <div style="font-size: 13px; color: #333;">${details}</div>
                             </div>
-                            <span style="color: ${amountColor}; font-weight: bold; font-size: 14px; white-space: nowrap;">${sign}$${t.amount}</span>
+                            <span style="color: ${amountColor}; font-weight: bold; font-size: 14px; white-space: nowrap;">${sign}$${t.amount.toLocaleString()}</span>
                         </div>
                     `;
                 });
