@@ -300,6 +300,54 @@ def get_category_statistics():
         "categories": categories,
         "amounts": amounts
     }
+# 12. 查詢指定年份與月份的歷史紀錄與統計
+@app.get("/statistics/history")
+def get_history_statistics(year: int, month: int):
+    db = SessionLocal()
+    
+    # 決定該月份的起始與結束日期
+    if month == 12:
+        start_date = date(year, 12, 1)
+        end_date = date(year + 1, 1, 1)
+    else:
+        start_date = date(year, month, 1)
+        end_date = date(year, month + 1, 1)
+        
+    # 查詢該月份的所有交易
+    transactions = db.query(Transaction).filter(
+        Transaction.transaction_date >= start_date,
+        Transaction.transaction_date < end_date
+    ).order_by(Transaction.id.desc()).all()
+    
+    income_total = 0
+    expense_total = 0
+    result_transactions = []
+    
+    for t in transactions:
+        if t.transaction_type == "income":
+            income_total += t.amount
+        else:
+            expense_total += t.amount
+            
+        result_transactions.append({
+            "id": t.id,
+            "amount": t.amount,
+            "type": t.transaction_type,
+            "category": t.category,
+            "subcategory": t.subcategory,
+            "payment_method": t.payment_method,
+            "note": t.note,
+            "date": str(t.transaction_date)
+        })
+        
+    db.close()
+    
+    return {
+        "income": income_total,
+        "expense": expense_total,
+        "balance": income_total - expense_total,
+        "transactions": result_transactions
+    }
 
 # 9. 匯出 Excel
 @app.get("/export/excel")
